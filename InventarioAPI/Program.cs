@@ -1,41 +1,52 @@
+using Microsoft.EntityFrameworkCore;
+using InventarioAPI.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// --- 1. CONFIGURACIÓN DE SERVICIOS ---
+
+// Soporte para controladores (Obligatorio para el AuthController)
+builder.Services.AddControllers();
+
+// Configuración de Swagger / OpenAPI
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(); // Swashbuckle lo configura automáticamente aquí
+
+// Configuración de CORS para que Blazor (puerto 5034) pueda entrar
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("PermitirBlazor", policy =>
+        policy.WithOrigins("http://localhost:5034")
+              .AllowAnyMethod()
+              .AllowAnyHeader());
+});
+
+// Conexión a la base de datos de Supabase
+builder.Services.AddDbContext<InventarioDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// --- 2. CONFIGURACIÓN DEL PIPELINE (ORDEN IMPORTANTE) ---
+
+// Habilitar Swagger en modo Desarrollo
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI(); // Esto crea la página en /swagger
 }
+
+// IMPORTANTE: El orden de estos tres es vital
+app.UseCors("PermitirBlazor");
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+app.UseAuthorization();
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+// Mapear las rutas de la API
+app.MapControllers();
+
+// Ruta de prueba rápida
+app.MapGet("/", () => "API de Inventario VIVA y funcionando perfectamente.");
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

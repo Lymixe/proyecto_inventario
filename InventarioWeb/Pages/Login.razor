@@ -1,0 +1,115 @@
+@page "/login"
+@page "/"
+@using InventarioWeb.Models
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+
+<div class="login-page">
+    <div class="login-card">
+
+        <div class="login-logo">
+            <div class="login-logo-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" fill="white" opacity="0.9"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" fill="white" opacity="0.5"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" fill="white" opacity="0.5"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" fill="white" opacity="0.7"/>
+                </svg>
+            </div>
+            <div class="login-logo-text">
+                <p>CONTROL INVENTARIO</p>
+                <p>Sistema de Gestión Eficiente</p>
+            </div>
+        </div>
+
+        <hr class="login-divider" />
+        <p class="login-title">Iniciar Sesión</p>
+
+        @if (!string.IsNullOrEmpty(errorMsg))
+        {
+            <div class="login-error">@errorMsg</div>
+        }
+
+        <div class="field-group">
+            <label class="field-label">Correo Electrónico</label>
+            <div class="field-wrap">
+                <svg width="15" height="15" fill="none" stroke="#bbb" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+                <input type="email" placeholder="Ej: ejm@ejm.com"
+                       @bind="email" @bind:event="oninput" />
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label class="field-label">Contraseña</label>
+            <div class="field-wrap">
+                <svg width="15" height="15" fill="none" stroke="#bbb" stroke-width="2" viewBox="0 0 24 24">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <input type="password" placeholder="••••••••"
+                       @bind="password" @bind:event="oninput" />
+            </div>
+        </div>
+
+        <div class="login-forgot">
+            <a href="#">¿Olvidé mi contraseña?</a>
+        </div>
+
+        <button class="btn-primary" @onclick="IniciarSesion">INICIAR SESIÓN</button>
+
+        <div class="login-roles">
+            Acceso según rol asignado
+            <div class="role-chips">
+                <span class="chip-blue">Informática</span>
+                <span class="chip-gray">Usuario general</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@inject AuthenticationStateProvider AuthProvider
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+
+@code {
+    private string email = "";    // Antes tenías 'usuario' aquí, por eso fallaba
+    private string password = "";
+    private string errorMsg = ""; // Ahora sí está declarada
+
+    private async Task IniciarSesion()
+    {
+        errorMsg = ""; 
+
+        // Sincronizado con el modelo LoginRequest (Correo con C mayúscula)
+        var loginData = new LoginRequest { 
+            Correo = email, 
+            Password = password 
+        };
+
+        try 
+        {
+            var response = await Http.PostAsJsonAsync("api/auth/login", loginData);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await LocalStorage.SetItemAsync("authToken", "sesion_activa");
+                ((CustomAuthStateProvider)AuthProvider).NotifyUserLogin("sesion_activa");
+                Nav.NavigateTo("/home");
+            }
+            else
+            {
+                errorMsg = "Correo o contraseña incorrectos.";
+            }
+        }
+        catch (Exception) 
+        {
+            errorMsg = "Error: No se pudo conectar con el servidor API.";
+        }
+    }
+}
