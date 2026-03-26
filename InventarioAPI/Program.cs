@@ -49,4 +49,5 @@ app.MapControllers();
 // Ruta de prueba rápida
 app.MapGet("/", () => "API de Inventario VIVA y funcionando perfectamente.");
 
-app.Run();
+app.Run(); 
+
